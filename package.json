@@ -19,6 +19,7 @@
     "start": "nodemon index.ts"
   },
   "dependencies": {
+    "@tailwindcss/cli": "^4.1.12",
     "axios": "^1.11.0",
     "body-parser": "^2.2.0",
     "dotenv": "^17.2.1",
@@ -26,6 +27,7 @@
     "express-validator": "^7.2.1",
     "mongodb": "^6.18.0",
     "mongoose": "^8.18.0",
+    "tailwindcss": "^4.1.12",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
