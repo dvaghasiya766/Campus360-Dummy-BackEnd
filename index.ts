@@ -28,3 +28,12 @@ initializeDBAndServer();
 app.get("/", (req, res) => {
   res.sendFile("./src/Demo/index.html", { root: __dirname });
 });
+
+const { transporter, mailOptions } = require("./src/Utils/Service/mail");
+transporter.sendMail(mailOptions, function (error: any, info: any) {
+  if (error) {
+    console.log(error);
+  } else {
+    console.log("Email sent: " + info.response);
+  }
+});
