@@ -1,39 +1,4 @@
--- 1. Role (User)
-CREATE TYPE user_role AS ENUM ('student', 'faculty', 'admin');
-
--- 2. Gender (User)
-CREATE TYPE user_gender AS ENUM ('male', 'female');
-
--- 3. User status
-CREATE TYPE user_status AS ENUM ('active', 'inactive', 'suspended');
-
--- 4. Generic status for Department & Course
-CREATE TYPE status_active_inactive AS ENUM ('active', 'inactive');
-
--- 5. Batch status
-CREATE TYPE batch_status AS ENUM ('active', 'graduated', 'inactive');
-
--- 6. Assignment status
-CREATE TYPE assignment_status AS ENUM ('save', 'published');
-
--- 7. Attendance status
-CREATE TYPE attendance_status AS ENUM ('present', 'absent', 'late', 'leave');
-
--- 8. Request type
-CREATE TYPE request_type AS ENUM ('registration', 'leave', 'service', 'complaint');
-
--- 9. Request status
-CREATE TYPE request_status AS ENUM ('pending', 'approved', 'rejected', 'resolved');
-
--- 10. Assessment type
-CREATE TYPE assessment_type AS ENUM ('quiz', 'midterm', 'final', 'project');
-
-
-
-
-TABLES
--- 1. User
-CREATE TABLE "User" (
+const CREATE_USER = `CREATE TABLE "User" (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -53,9 +18,9 @@ CREATE TABLE "User" (
     deleted_at TIMESTAMP,
     deleted_by INT
 );
+`;
 
--- 2. Department
-CREATE TABLE "Department" (
+const CREATE_DEPARTMENT = `CREATE TABLE "Department" (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
@@ -69,9 +34,9 @@ CREATE TABLE "Department" (
     deleted_at TIMESTAMP,
     deleted_by INT
 );
+`;
 
--- 3. Course
-CREATE TABLE "Course" (
+const CREATE_COURES = `CREATE TABLE "Course" (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
@@ -87,9 +52,9 @@ CREATE TABLE "Course" (
     deleted_by INT,
     UNIQUE(department_id, code)
 );
+`;
 
--- 4. Syllabus
-CREATE TABLE "Syllabus" (
+const CREATE_SYLLABUS = `CREATE TABLE "Syllabus" (
     id SERIAL PRIMARY KEY,
     course_id INT,
     module_name VARCHAR(255) NOT NULL,
@@ -105,9 +70,9 @@ CREATE TABLE "Syllabus" (
     deleted_by INT,
     UNIQUE(course_id, order_no)
 );
+`;
 
--- 5. Batch
-CREATE TABLE "Batch" (
+const CREATE_BATCH = `CREATE TABLE "Batch" (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     start_year INT NOT NULL,
@@ -121,9 +86,9 @@ CREATE TABLE "Batch" (
     deleted_at TIMESTAMP,
     deleted_by INT
 );
+`;
 
--- 6. PAT
-CREATE TABLE "PAT" (
+const CREATE_PAT = `CREATE TABLE "PAT" (
     id SERIAL PRIMARY KEY,
     user_id INT,
     token VARCHAR(255) NOT NULL,
@@ -131,9 +96,9 @@ CREATE TABLE "PAT" (
     expires_at TIMESTAMP NOT NULL,
     revoked BOOLEAN NOT NULL DEFAULT FALSE
 );
+`;
 
--- 7. Assignment
-CREATE TABLE "Assignment" (
+const CREATE_ASSIGNMENT = `CREATE TABLE "Assignment" (
     id SERIAL PRIMARY KEY,
     course_id INT,
     module_id INT,
@@ -153,9 +118,9 @@ CREATE TABLE "Assignment" (
     deleted_at TIMESTAMP,
     deleted_by INT
 );
+`;
 
--- 8. Submission
-CREATE TABLE "Submission" (
+const CREATE_SUBMISSION = `CREATE TABLE "Submission" (
     id SERIAL PRIMARY KEY,
     assignment_id INT,
     student_id INT,
@@ -166,9 +131,9 @@ CREATE TABLE "Submission" (
     feedback TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+`;
 
--- 9. Attendance
-CREATE TABLE "Attendance" (
+const CREATE_ATTENDANCE = `CREATE TABLE "Attendance" (
     id SERIAL PRIMARY KEY,
     course_id INT NOT NULL,
     faculty_id INT NOT NULL,
@@ -179,9 +144,9 @@ CREATE TABLE "Attendance" (
     updated_by INT,
     UNIQUE(course_id, faculty_id, student_id, session_timestamp)
 );
+`;
 
--- 10. Evaluation
-CREATE TABLE "Evaluation" (
+const CREATE_EVALUATION = `CREATE TABLE "Evaluation" (
     id SERIAL PRIMARY KEY,
     student_id INT,
     assessment_id INT,
@@ -195,9 +160,9 @@ CREATE TABLE "Evaluation" (
     deleted_at TIMESTAMP,
     deleted_by INT
 );
+`;
 
--- 11. Requests
-CREATE TABLE "Requests" (
+const CREATE_REQUESTS = `CREATE TABLE "Requests" (
     id SERIAL PRIMARY KEY,
     sender_id INT,
     receiver_id INT,
@@ -209,9 +174,9 @@ CREATE TABLE "Requests" (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP
 );
+`;
 
--- 12. Assessments
-CREATE TABLE "Assessments" (
+const CREATE_ASSESSMENTS = `CREATE TABLE "Assessments" (
     id SERIAL PRIMARY KEY,
     course_id INT,
     module_id INT,
@@ -231,82 +196,121 @@ CREATE TABLE "Assessments" (
     update_by INT,
     publish_by INT
 );
+`;
 
--- 13. Semester
-CREATE TABLE "Semester" (
+const CREATE_SEMESTER = `CREATE TABLE "Semester" (
     id SERIAL PRIMARY KEY,
     number INT UNIQUE NOT NULL,
     name VARCHAR(255)
 );
+`;
 
-
-Add Foreign Keys
-ALTER TABLE "User"
+const ADD_FK_USER = `ALTER TABLE "User"
   ADD CONSTRAINT fk_user_batch FOREIGN KEY (batch_id) REFERENCES "Batch"(id),
   ADD CONSTRAINT fk_user_semester FOREIGN KEY (semester_id) REFERENCES "Semester"(id),
   ADD CONSTRAINT fk_user_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_user_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_user_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
+`;
 
-ALTER TABLE "Department"
+const ADD_FK_DEPARTMENT = `ALTER TABLE "Department"
   ADD CONSTRAINT fk_department_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_department_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_department_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
+`;
 
-ALTER TABLE "Course"
+const ADD_FK_COURES = `ALTER TABLE "Course"
   ADD CONSTRAINT fk_course_department FOREIGN KEY (department_id) REFERENCES "Department"(id),
   ADD CONSTRAINT fk_course_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_course_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_course_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
+`;
 
-ALTER TABLE "Syllabus"
+const ADD_FK_SYLLABUS = `ALTER TABLE "Syllabus"
   ADD CONSTRAINT fk_syllabus_course FOREIGN KEY (course_id) REFERENCES "Course"(id),
   ADD CONSTRAINT fk_syllabus_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_syllabus_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_syllabus_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
+`;
 
-ALTER TABLE "Batch"
+const ADD_FK_BATCH = `ALTER TABLE "Batch"
   ADD CONSTRAINT fk_batch_department FOREIGN KEY (department_id) REFERENCES "Department"(id),
   ADD CONSTRAINT fk_batch_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_batch_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_batch_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
+`;
 
-ALTER TABLE "PAT"
+const ADD_FK_PAT = `ALTER TABLE "PAT"
   ADD CONSTRAINT fk_pat_user FOREIGN KEY (user_id) REFERENCES "User"(id);
+`;
 
-ALTER TABLE "Assignment"
+const ADD_FK_ASSIGNMENT = `ALTER TABLE "Assignment"
   ADD CONSTRAINT fk_assignment_course FOREIGN KEY (course_id) REFERENCES "Course"(id),
   ADD CONSTRAINT fk_assignment_module FOREIGN KEY (module_id) REFERENCES "Syllabus"(id),
   ADD CONSTRAINT fk_assignment_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_assignment_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_assignment_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
+`;
 
-ALTER TABLE "Submission"
+const ADD_FK_SUBMISSION = `ALTER TABLE "Submission"
   ADD CONSTRAINT fk_submission_assignment FOREIGN KEY (assignment_id) REFERENCES "Assignment"(id),
   ADD CONSTRAINT fk_submission_student FOREIGN KEY (student_id) REFERENCES "User"(id),
   ADD CONSTRAINT fk_submission_graded_by FOREIGN KEY (graded_by) REFERENCES "User"(id);
+`;
 
-ALTER TABLE "Attendance"
+const ADD_FK_ATTENDANCE = `ALTER TABLE "Attendance"
   ADD CONSTRAINT fk_attendance_course FOREIGN KEY (course_id) REFERENCES "Course"(id),
   ADD CONSTRAINT fk_attendance_faculty FOREIGN KEY (faculty_id) REFERENCES "User"(id),
   ADD CONSTRAINT fk_attendance_student FOREIGN KEY (student_id) REFERENCES "User"(id),
   ADD CONSTRAINT fk_attendance_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id);
+`;
 
-ALTER TABLE "Evaluation"
+const ADD_FK_EVALUATION = `ALTER TABLE "Evaluation"
   ADD CONSTRAINT fk_eval_student FOREIGN KEY (student_id) REFERENCES "User"(id),
   ADD CONSTRAINT fk_eval_assessment FOREIGN KEY (assessment_id) REFERENCES "Assessments"(id),
   ADD CONSTRAINT fk_eval_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_eval_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_eval_publish_by FOREIGN KEY (publish_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_eval_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
+`;
 
-ALTER TABLE "Requests"
+const ADD_FK_REQUESTS = `ALTER TABLE "Requests"
   ADD CONSTRAINT fk_requests_sender FOREIGN KEY (sender_id) REFERENCES "User"(id),
   ADD CONSTRAINT fk_requests_receiver FOREIGN KEY (receiver_id) REFERENCES "User"(id);
+`;
 
-ALTER TABLE "Assessments"
+const ADD_FK_ASSESSMENTS = `ALTER TABLE "Assessments"
   ADD CONSTRAINT fk_assessments_course FOREIGN KEY (course_id) REFERENCES "Course"(id),
   ADD CONSTRAINT fk_assessments_module FOREIGN KEY (module_id) REFERENCES "Syllabus"(id),
   ADD CONSTRAINT fk_assessments_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_assessments_update_by FOREIGN KEY (update_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_assessments_publish_by FOREIGN KEY (publish_by) REFERENCES "User"(id);
+`;
+
+module.exports = {
+  CREATE_USER,
+  CREATE_DEPARTMENT,
+  CREATE_COURES,
+  CREATE_SYLLABUS,
+  CREATE_BATCH,
+  CREATE_PAT,
+  CREATE_ASSIGNMENT,
+  CREATE_SUBMISSION,
+  CREATE_ATTENDANCE,
+  CREATE_EVALUATION,
+  CREATE_REQUESTS,
+  CREATE_ASSESSMENTS,
+  CREATE_SEMESTER,
+  ADD_FK_USER,
+  ADD_FK_DEPARTMENT,
+  ADD_FK_COURES,
+  ADD_FK_SYLLABUS,
+  ADD_FK_BATCH,
+  ADD_FK_PAT,
+  ADD_FK_ASSIGNMENT,
+  ADD_FK_SUBMISSION,
+  ADD_FK_ATTENDANCE,
+  ADD_FK_EVALUATION,
+  ADD_FK_REQUESTS,
+  ADD_FK_ASSESSMENTS,
+};
