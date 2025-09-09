@@ -18,7 +18,6 @@ const initializeDBAndServer = async (): Promise<void> => {
     });
   } catch (e: any) {
     console.error(`DB Error: ${e.message}`);
-    process.exit(1);
   }
 };
 
@@ -29,11 +28,5 @@ app.get("/", (req, res) => {
   res.sendFile("./src/Demo/index.html", { root: __dirname });
 });
 
-const { transporter, mailOptions } = require("./src/Utils/Service/mail");
-transporter.sendMail(mailOptions, function (error: any, info: any) {
-  if (error) {
-    console.log(error);
-  } else {
-    console.log("Email sent: " + info.response);
-  }
-});
+const Migration = require("./src/Customs/Migration");
+Migration();

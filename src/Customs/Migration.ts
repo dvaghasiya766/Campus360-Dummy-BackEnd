@@ -17,8 +17,8 @@ const MigrationTypes = async () => {
 const MigrationTable = async () => {
   try {
     for (const [name, query] of Object.entries(tables)) {
-      await client.query(query);
-      console.log(`✅ ${name} created successfully`);
+      let result = await client.query(query);
+      console.log(`✅ ${name} created successfully`, result);
     }
   } catch (err) {
     console.error("❌ Migration failed:", err);

@@ -18,4 +18,13 @@ let mailOptions = {
   text: "That was easy!",
 };
 
-module.exports = { transporter, mailOptions };
+const { transporter, mailOptions } = require("./src/Utils/Service/mail");
+transporter.sendMail(mailOptions, function (error: any, info: any) {
+  if (error) {
+    console.log(error);
+  } else {
+    console.log("Email sent: " + info.response);
+  }
+});
+
+// module.exports = { transporter, mailOptions };
