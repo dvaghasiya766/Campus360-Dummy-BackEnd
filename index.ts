@@ -28,5 +28,18 @@ app.get("/", (req, res) => {
   res.sendFile("./src/Demo/index.html", { root: __dirname });
 });
 
-const Migration = require("./src/Customs/Migration");
-Migration();
+// const Migration = require("./src/Customs/Migration");
+// Migration();
+
+// const mailer = require("./src/Utils/Service/Mail");
+
+// mailer.transporter.sendMail(
+//   mailer.mailOptions,
+//   function (error: any, info: any) {
+//     if (error) {
+//       console.log(error);
+//     } else {
+//       console.log("Email sent: " + info.response);
+//     }
+//   }
+// );
