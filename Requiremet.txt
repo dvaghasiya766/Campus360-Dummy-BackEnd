@@ -1,44 +1,59 @@
--- 1. Role (User)
+-- ===========================
+-- ENUM Types
+-- ===========================
 CREATE TYPE user_role AS ENUM ('student', 'faculty', 'admin');
-
--- 2. Gender (User)
 CREATE TYPE user_gender AS ENUM ('male', 'female');
-
--- 3. User status
 CREATE TYPE user_status AS ENUM ('active', 'inactive', 'suspended');
 
--- 4. Generic status for Department & Course
-CREATE TYPE status_active_inactive AS ENUM ('active', 'inactive');
+CREATE TYPE entity_status AS ENUM ('active', 'inactive');              -- for Department, Course
+CREATE TYPE extended_status AS ENUM ('active', 'graduated', 'inactive'); -- for Batch
 
--- 5. Batch status
-CREATE TYPE batch_status AS ENUM ('active', 'graduated', 'inactive');
+CREATE TYPE publication_status AS ENUM ('save', 'published'); -- for Assignment, Assessment, Topics
+CREATE TYPE assessment_type AS ENUM ('quiz', 'midterm', 'final', 'project');
+CREATE TYPE topic_type AS ENUM ('Video', 'Docs', 'CheatSheets', 'PPT', 'PDF');
 
--- 6. Assignment status
-CREATE TYPE assignment_status AS ENUM ('save', 'published');
-
--- 7. Attendance status
 CREATE TYPE attendance_status AS ENUM ('present', 'absent', 'late', 'leave');
-
--- 8. Request type
 CREATE TYPE request_type AS ENUM ('registration', 'leave', 'service', 'complaint');
-
--- 9. Request status
 CREATE TYPE request_status AS ENUM ('pending', 'approved', 'rejected', 'resolved');
 
--- 10. Assessment type
-CREATE TYPE assessment_type AS ENUM ('quiz', 'midterm', 'final', 'project');
+-- ===========================
+-- Trigger Function for created_at & updated_at
+-- ===========================
+CREATE OR REPLACE FUNCTION set_timestamps()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.created_at IS NULL THEN
+      NEW.created_at = NOW();
+    END IF;
+  END IF;
 
+  IF TG_OP = 'UPDATE' THEN
+    NEW.updated_at = NOW();
+  END IF;
 
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
+-- ===========================
+-- TABLES
+-- ===========================
 
-TABLES
--- 1. User
+-- SEMESTER
+CREATE TABLE "Semester" (
+    id SERIAL PRIMARY KEY,
+    number INT UNIQUE NOT NULL,
+    name VARCHAR(100)
+);
+
+-- USER
 CREATE TABLE "User" (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    enrollment VARCHAR(50) UNIQUE NOT NULL,
+    enrollment VARCHAR(50) UNIQUE,
     role user_role NOT NULL,
     phone_number VARCHAR(20) NOT NULL,
     gender user_gender NOT NULL,
@@ -46,7 +61,7 @@ CREATE TABLE "User" (
     batch_id INT,
     semester_id INT,
     status user_status NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW(),
     created_by INT,
     updated_at TIMESTAMP,
     updated_by INT,
@@ -54,15 +69,31 @@ CREATE TABLE "User" (
     deleted_by INT
 );
 
--- 2. Department
+-- BATCH
+CREATE TABLE "Batch" (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    start_year INT NOT NULL,
+    end_year INT NOT NULL,
+    department_id INT NOT NULL,
+    status extended_status NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    created_by INT,
+    updated_at TIMESTAMP,
+    updated_by INT,
+    deleted_at TIMESTAMP,
+    deleted_by INT
+);
+
+-- DEPARTMENT
 CREATE TABLE "Department" (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     code VARCHAR(50) NOT NULL,
-    status status_active_inactive NOT NULL,
+    status entity_status NOT NULL,
     notes JSONB,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW(),
     created_by INT,
     updated_at TIMESTAMP,
     updated_by INT,
@@ -70,16 +101,16 @@ CREATE TABLE "Department" (
     deleted_by INT
 );
 
--- 3. Course
+-- COURSE
 CREATE TABLE "Course" (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    status status_active_inactive NOT NULL,
-    department_id INT,
+    status entity_status NOT NULL,
+    department_id INT NOT NULL,
     code VARCHAR(50) NOT NULL,
     notes JSONB,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW(),
     created_by INT NOT NULL,
     updated_at TIMESTAMP,
     updated_by INT,
@@ -88,16 +119,15 @@ CREATE TABLE "Course" (
     UNIQUE(department_id, code)
 );
 
--- 4. Syllabus
-CREATE TABLE "Syllabus" (
+-- MODULE
+CREATE TABLE "Module" (
     id SERIAL PRIMARY KEY,
-    course_id INT,
+    course_id INT NOT NULL,
     module_name VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    documents JSONB,
     order_no INT NOT NULL,
     notes JSONB,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW(),
     created_by INT NOT NULL,
     updated_at TIMESTAMP,
     updated_by INT,
@@ -106,47 +136,30 @@ CREATE TABLE "Syllabus" (
     UNIQUE(course_id, order_no)
 );
 
--- 5. Batch
-CREATE TABLE "Batch" (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    start_year INT NOT NULL,
-    end_year INT NOT NULL,
-    department_id INT,
-    status batch_status NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    created_by INT NOT NULL,
-    updated_at TIMESTAMP,
-    updated_by INT,
-    deleted_at TIMESTAMP,
-    deleted_by INT
-);
-
--- 6. PAT
+-- PAT (Personal Access Token)
 CREATE TABLE "PAT" (
     id SERIAL PRIMARY KEY,
-    user_id INT,
+    user_id INT NOT NULL,
     token VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW(),
     expires_at TIMESTAMP NOT NULL,
-    revoked BOOLEAN NOT NULL DEFAULT FALSE
+    revoked BOOLEAN NOT NULL
 );
 
--- 7. Assignment
+-- ASSIGNMENT
 CREATE TABLE "Assignment" (
     id SERIAL PRIMARY KEY,
-    course_id INT,
-    module_id INT,
+    module_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    status assignment_status NOT NULL,
-    publish_at TIMESTAMP NOT NULL,
+    status publication_status NOT NULL,
+    publish_at TIMESTAMP,
     start_date TIMESTAMP NOT NULL,
     due_date TIMESTAMP NOT NULL,
     attempts INT NOT NULL DEFAULT 1,
     max_marks INT NOT NULL,
     notes JSONB,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW(),
     created_by INT NOT NULL,
     updated_at TIMESTAMP,
     updated_by INT,
@@ -154,20 +167,20 @@ CREATE TABLE "Assignment" (
     deleted_by INT
 );
 
--- 8. Submission
+-- SUBMISSION
 CREATE TABLE "Submission" (
     id SERIAL PRIMARY KEY,
-    assignment_id INT,
-    student_id INT,
+    assignment_id INT NOT NULL,
+    student_id INT NOT NULL,
     attachment JSONB,
     submitted_at TIMESTAMP NOT NULL,
     score INT,
     graded_by INT,
     feedback TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW()
 );
 
--- 9. Attendance
+-- ATTENDANCE
 CREATE TABLE "Attendance" (
     id SERIAL PRIMARY KEY,
     course_id INT NOT NULL,
@@ -180,41 +193,10 @@ CREATE TABLE "Attendance" (
     UNIQUE(course_id, faculty_id, student_id, session_timestamp)
 );
 
--- 10. Evaluation
-CREATE TABLE "Evaluation" (
+-- ASSESSMENT
+CREATE TABLE "Assessment" (
     id SERIAL PRIMARY KEY,
-    student_id INT,
-    assessment_id INT,
-    marks_obtained DECIMAL(5,2) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    created_by INT,
-    updated_at TIMESTAMP,
-    updated_by INT,
-    publish_at TIMESTAMP,
-    publish_by INT,
-    deleted_at TIMESTAMP,
-    deleted_by INT
-);
-
--- 11. Requests
-CREATE TABLE "Requests" (
-    id SERIAL PRIMARY KEY,
-    sender_id INT,
-    receiver_id INT,
-    type request_type NOT NULL,
-    subject VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    status request_status NOT NULL,
-    attachment JSONB,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP
-);
-
--- 12. Assessments
-CREATE TABLE "Assessments" (
-    id SERIAL PRIMARY KEY,
-    course_id INT,
-    module_id INT,
+    module_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     type assessment_type NOT NULL,
     description TEXT NOT NULL,
@@ -223,24 +205,66 @@ CREATE TABLE "Assessments" (
     min_marks INT NOT NULL,
     scheduled_at TIMESTAMP NOT NULL,
     notes JSONB,
+    status publication_status NOT NULL,
     duration_minutes INT,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW(),
     publish_at TIMESTAMP,
     updated_at TIMESTAMP,
-    created_by INT,
-    update_by INT,
+    created_by INT NOT NULL,
+    updated_by INT,
     publish_by INT
 );
 
--- 13. Semester
-CREATE TABLE "Semester" (
+-- EVALUATION
+CREATE TABLE "Evaluation" (
     id SERIAL PRIMARY KEY,
-    number INT UNIQUE NOT NULL,
-    name VARCHAR(255)
+    student_id INT NOT NULL,
+    assessment_id INT NOT NULL,
+    marks_obtained DECIMAL(5,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    created_by INT NOT NULL,
+    updated_at TIMESTAMP,
+    updated_by INT,
+    publish_at TIMESTAMP,
+    publish_by INT,
+    deleted_at TIMESTAMP,
+    deleted_by INT
 );
 
+-- REQUESTS
+CREATE TABLE "Requests" (
+    id SERIAL PRIMARY KEY,
+    sender_id INT NOT NULL,
+    receiver_id INT NOT NULL,
+    type request_type NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    status request_status NOT NULL,
+    attachment JSONB,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP
+);
 
-Add Foreign Keys
+-- TOPICS
+CREATE TABLE "Topics" (
+    id SERIAL PRIMARY KEY,
+    module_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    type topic_type NOT NULL,
+    description TEXT,
+    status publication_status NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    publish_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    created_by INT,
+    updated_by INT,
+    publish_by INT
+);
+
+-- ===========================
+-- FOREIGN KEYS
+-- ===========================
+-- User
 ALTER TABLE "User"
   ADD CONSTRAINT fk_user_batch FOREIGN KEY (batch_id) REFERENCES "Batch"(id),
   ADD CONSTRAINT fk_user_semester FOREIGN KEY (semester_id) REFERENCES "Semester"(id),
@@ -248,65 +272,102 @@ ALTER TABLE "User"
   ADD CONSTRAINT fk_user_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_user_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
 
-ALTER TABLE "Department"
-  ADD CONSTRAINT fk_department_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
-  ADD CONSTRAINT fk_department_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
-  ADD CONSTRAINT fk_department_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
-
-ALTER TABLE "Course"
-  ADD CONSTRAINT fk_course_department FOREIGN KEY (department_id) REFERENCES "Department"(id),
-  ADD CONSTRAINT fk_course_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
-  ADD CONSTRAINT fk_course_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
-  ADD CONSTRAINT fk_course_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
-
-ALTER TABLE "Syllabus"
-  ADD CONSTRAINT fk_syllabus_course FOREIGN KEY (course_id) REFERENCES "Course"(id),
-  ADD CONSTRAINT fk_syllabus_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
-  ADD CONSTRAINT fk_syllabus_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
-  ADD CONSTRAINT fk_syllabus_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
-
+-- Batch
 ALTER TABLE "Batch"
   ADD CONSTRAINT fk_batch_department FOREIGN KEY (department_id) REFERENCES "Department"(id),
   ADD CONSTRAINT fk_batch_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_batch_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_batch_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
 
+-- Department
+ALTER TABLE "Department"
+  ADD CONSTRAINT fk_department_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_department_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_department_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
+
+-- Course
+ALTER TABLE "Course"
+  ADD CONSTRAINT fk_course_department FOREIGN KEY (department_id) REFERENCES "Department"(id),
+  ADD CONSTRAINT fk_course_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_course_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_course_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
+
+-- Module
+ALTER TABLE "Module"
+  ADD CONSTRAINT fk_module_course FOREIGN KEY (course_id) REFERENCES "Course"(id),
+  ADD CONSTRAINT fk_module_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_module_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_module_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
+
+-- PAT
 ALTER TABLE "PAT"
   ADD CONSTRAINT fk_pat_user FOREIGN KEY (user_id) REFERENCES "User"(id);
 
+-- Assignment
 ALTER TABLE "Assignment"
-  ADD CONSTRAINT fk_assignment_course FOREIGN KEY (course_id) REFERENCES "Course"(id),
-  ADD CONSTRAINT fk_assignment_module FOREIGN KEY (module_id) REFERENCES "Syllabus"(id),
+  ADD CONSTRAINT fk_assignment_module FOREIGN KEY (module_id) REFERENCES "Module"(id),
   ADD CONSTRAINT fk_assignment_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_assignment_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
   ADD CONSTRAINT fk_assignment_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
 
+-- Submission
 ALTER TABLE "Submission"
   ADD CONSTRAINT fk_submission_assignment FOREIGN KEY (assignment_id) REFERENCES "Assignment"(id),
   ADD CONSTRAINT fk_submission_student FOREIGN KEY (student_id) REFERENCES "User"(id),
   ADD CONSTRAINT fk_submission_graded_by FOREIGN KEY (graded_by) REFERENCES "User"(id);
 
+-- Attendance
 ALTER TABLE "Attendance"
   ADD CONSTRAINT fk_attendance_course FOREIGN KEY (course_id) REFERENCES "Course"(id),
   ADD CONSTRAINT fk_attendance_faculty FOREIGN KEY (faculty_id) REFERENCES "User"(id),
   ADD CONSTRAINT fk_attendance_student FOREIGN KEY (student_id) REFERENCES "User"(id),
   ADD CONSTRAINT fk_attendance_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id);
 
-ALTER TABLE "Evaluation"
-  ADD CONSTRAINT fk_eval_student FOREIGN KEY (student_id) REFERENCES "User"(id),
-  ADD CONSTRAINT fk_eval_assessment FOREIGN KEY (assessment_id) REFERENCES "Assessments"(id),
-  ADD CONSTRAINT fk_eval_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
-  ADD CONSTRAINT fk_eval_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
-  ADD CONSTRAINT fk_eval_publish_by FOREIGN KEY (publish_by) REFERENCES "User"(id),
-  ADD CONSTRAINT fk_eval_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
+-- Assessment
+ALTER TABLE "Assessment"
+  ADD CONSTRAINT fk_assessment_module FOREIGN KEY (module_id) REFERENCES "Module"(id),
+  ADD CONSTRAINT fk_assessment_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_assessment_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_assessment_publish_by FOREIGN KEY (publish_by) REFERENCES "User"(id);
 
+-- Evaluation
+ALTER TABLE "Evaluation"
+  ADD CONSTRAINT fk_evaluation_student FOREIGN KEY (student_id) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_evaluation_assessment FOREIGN KEY (assessment_id) REFERENCES "Assessment"(id),
+  ADD CONSTRAINT fk_evaluation_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_evaluation_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_evaluation_publish_by FOREIGN KEY (publish_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_evaluation_deleted_by FOREIGN KEY (deleted_by) REFERENCES "User"(id);
+
+-- Requests
 ALTER TABLE "Requests"
   ADD CONSTRAINT fk_requests_sender FOREIGN KEY (sender_id) REFERENCES "User"(id),
   ADD CONSTRAINT fk_requests_receiver FOREIGN KEY (receiver_id) REFERENCES "User"(id);
 
-ALTER TABLE "Assessments"
-  ADD CONSTRAINT fk_assessments_course FOREIGN KEY (course_id) REFERENCES "Course"(id),
-  ADD CONSTRAINT fk_assessments_module FOREIGN KEY (module_id) REFERENCES "Syllabus"(id),
-  ADD CONSTRAINT fk_assessments_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
-  ADD CONSTRAINT fk_assessments_update_by FOREIGN KEY (update_by) REFERENCES "User"(id),
-  ADD CONSTRAINT fk_assessments_publish_by FOREIGN KEY (publish_by) REFERENCES "User"(id);
+-- Topics
+ALTER TABLE "Topics"
+  ADD CONSTRAINT fk_topics_module FOREIGN KEY (module_id) REFERENCES "Module"(id),
+  ADD CONSTRAINT fk_topics_created_by FOREIGN KEY (created_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_topics_updated_by FOREIGN KEY (updated_by) REFERENCES "User"(id),
+  ADD CONSTRAINT fk_topics_publish_by FOREIGN KEY (publish_by) REFERENCES "User"(id);
+
+-- ===========================
+
+-- [Add all your FK constraints here like before]
+
+-- ===========================
+-- AUTO TIMESTAMP TRIGGERS
+-- ===========================
+-- Add triggers for tables with created_at/updated_at
+CREATE TRIGGER trg_user_timestamps BEFORE INSERT OR UPDATE ON "User" FOR EACH ROW EXECUTE FUNCTION set_timestamps();
+CREATE TRIGGER trg_batch_timestamps BEFORE INSERT OR UPDATE ON "Batch" FOR EACH ROW EXECUTE FUNCTION set_timestamps();
+CREATE TRIGGER trg_department_timestamps BEFORE INSERT OR UPDATE ON "Department" FOR EACH ROW EXECUTE FUNCTION set_timestamps();
+CREATE TRIGGER trg_course_timestamps BEFORE INSERT OR UPDATE ON "Course" FOR EACH ROW EXECUTE FUNCTION set_timestamps();
+CREATE TRIGGER trg_module_timestamps BEFORE INSERT OR UPDATE ON "Module" FOR EACH ROW EXECUTE FUNCTION set_timestamps();
+CREATE TRIGGER trg_assignment_timestamps BEFORE INSERT OR UPDATE ON "Assignment" FOR EACH ROW EXECUTE FUNCTION set_timestamps();
+CREATE TRIGGER trg_submission_timestamps BEFORE INSERT OR UPDATE ON "Submission" FOR EACH ROW EXECUTE FUNCTION set_timestamps();
+CREATE TRIGGER trg_attendance_timestamps BEFORE INSERT OR UPDATE ON "Attendance" FOR EACH ROW EXECUTE FUNCTION set_timestamps();
+CREATE TRIGGER trg_assessment_timestamps BEFORE INSERT OR UPDATE ON "Assessment" FOR EACH ROW EXECUTE FUNCTION set_timestamps();
+CREATE TRIGGER trg_evaluation_timestamps BEFORE INSERT OR UPDATE ON "Evaluation" FOR EACH ROW EXECUTE FUNCTION set_timestamps();
+CREATE TRIGGER trg_requests_timestamps BEFORE INSERT OR UPDATE ON "Requests" FOR EACH ROW EXECUTE FUNCTION set_timestamps();
+CREATE TRIGGER trg_topics_timestamps BEFORE INSERT OR UPDATE ON "Topics" FOR EACH ROW EXECUTE FUNCTION set_timestamps();
