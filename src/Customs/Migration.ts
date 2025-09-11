@@ -2,6 +2,7 @@ const client = require("../DB/DBConnection");
 const types = require("../DB/CustomTypes");
 const tables = require("../DB/TableCreationQueries");
 const fks = require("../DB/AddFKQueries");
+const triggers = require("../DB/TimeStampTriggers");
 
 const MigrationTypes = async () => {
   try {
@@ -36,10 +37,22 @@ const MigrationFKs = async () => {
   }
 };
 
+const MigrationTriggers = async () => {
+  try {
+    for (const [name, query] of Object.entries(triggers)) {
+      await client.query(query);
+      console.log(`✅ ${name} created successfully`);
+    }
+  } catch (err) {
+    console.error("❌ Migration failed:", err);
+  }
+};
+
 const Migration = async () => {
   await MigrationTypes();
   await MigrationTable();
   await MigrationFKs();
+  await MigrationTriggers();
 };
 
 module.exports = Migration;

@@ -352,10 +352,6 @@ ALTER TABLE "Topics"
   ADD CONSTRAINT fk_topics_publish_by FOREIGN KEY (publish_by) REFERENCES "User"(id);
 
 -- ===========================
-
--- [Add all your FK constraints here like before]
-
--- ===========================
 -- AUTO TIMESTAMP TRIGGERS
 -- ===========================
 -- Add triggers for tables with created_at/updated_at
